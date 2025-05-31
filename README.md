@@ -1,0 +1,2 @@
+# johnnie-walkietalkie
+Experimental derivative of connectivity-samples/NearbyConnectionsWalkieTalkie
