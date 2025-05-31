@@ -4,23 +4,30 @@
              android:keepScreenOn="true">
 
     <Button
-        android:id="@+id/shareImgBt"
-        android:layout_width="170dp"
+        android:id="@+id/shareButton01"
+        android:layout_width="130dp"
         android:layout_height="60dp"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
         android:layout_marginLeft="8dp"
         android:layout_marginTop="60dp"
-        android:text="Share Image" />
+        android:text="Share 01" />
+
+    <Button
+        android:id="@+id/shareButton02"
+        android:layout_width="130dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="140dp"
+        android:layout_marginLeft="140dp"
+        android:layout_marginTop="60dp"
+        android:text="Share 02" />
 
     <TextView
         android:id="@+id/name"
-        android:layout_width="250dp"
+        android:layout_width="130dp"
         android:layout_height="60dp"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="60dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginRight="10dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginRight="0dp"
         android:gravity="top|end"
         android:padding="10dp"
         android:textColor="@color/textColor"
@@ -44,6 +51,7 @@
         android:layout_height="100dp"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="240dp"
+        android:layout_marginEnd="6dp"
         android:gravity="center"
         android:padding="10dp"
         android:textColor="@color/textColor"
@@ -52,10 +60,11 @@
     <TextView
         android:id="@+id/debug_log"
         android:layout_width="match_parent"
-        android:layout_height="520dp"
+        android:layout_height="590dp"
         android:layout_alignParentStart="true"
         android:layout_gravity="bottom"
-        android:layout_marginTop="350dp"
+        android:layout_marginStart="-4dp"
+        android:layout_marginTop="30dp"
         android:gravity="bottom"
         android:maxLines="10"
         android:scrollbars="vertical"

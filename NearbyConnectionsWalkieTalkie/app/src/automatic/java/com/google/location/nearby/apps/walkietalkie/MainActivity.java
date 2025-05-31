@@ -36,7 +36,6 @@ import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.Strategy;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
@@ -117,8 +116,9 @@ public class MainActivity extends ConnectionsActivity {
   /** A running log of debug messages. Only visible when DEBUG=true. */
   private TextView mDebugLogView;
 
-  /** Button to launch image share. */
-  private Button mShareImgBt;
+  /** Buttons to launch share feature. */
+  private Button mShareButton01;
+  private Button mShareButton02;
 
   /** Listens to holding/releasing the volume rocker. */
   private final GestureDetector mGestureDetector =
@@ -164,11 +164,13 @@ public class MainActivity extends ConnectionsActivity {
     mName = generateRandomName();
     ((TextView) findViewById(R.id.name)).setText(mName);
 
-    mShareImgBt = (Button) findViewById(R.id.shareImgBt);
-    mShareImgBt.setOnClickListener(new ShareImgListener());
+    mShareButton01 = (Button) findViewById(R.id.shareButton01);
+    mShareButton01.setOnClickListener(new ShareImgListener01());
+    mShareButton02 = (Button) findViewById(R.id.shareButton02);
+    mShareButton02.setOnClickListener(new ShareImgListener02());
   }
 
-  class ShareImgListener implements View.OnClickListener {
+  class ShareImgListener01 implements View.OnClickListener {
     public void onClick(View v) {
       if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
         logW("photo picker not available");
@@ -196,6 +198,12 @@ public class MainActivity extends ConnectionsActivity {
       }
 
       mMediaPicker.launch(mediaRequest);
+    }
+  }
+
+  class ShareImgListener02 implements View.OnClickListener {
+    public void onClick(View v) {
+      logD("botton 02: tbd");
     }
   }
 
