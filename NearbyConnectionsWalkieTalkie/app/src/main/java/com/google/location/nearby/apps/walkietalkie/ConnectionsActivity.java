@@ -177,9 +177,17 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
 
         @Override
         public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
-          logD(
-              String.format(
-                  "onPayloadTransferUpdate(endpointId=%s, update=%s)", endpointId, update));
+          logD(String.format("onPayloadTransferUpdate(endpointId=%s, update=%s)", endpointId, update));
+          String statusStr = "unassigned";
+          switch (update.getStatus()) {
+            case PayloadTransferUpdate.Status.SUCCESS: statusStr = "success"; break;
+            case PayloadTransferUpdate.Status.IN_PROGRESS: statusStr = "in progress"; break;
+            case PayloadTransferUpdate.Status.CANCELED: statusStr = "canceled"; break;
+            case PayloadTransferUpdate.Status.FAILURE: statusStr = "failure"; break;
+            default: statusStr = "(unknown)";
+          }
+          logD("update status: " + update.getStatus() + ": " + statusStr);
+          logD("bytes transferred: " + update.getBytesTransferred());
         }
       };
 

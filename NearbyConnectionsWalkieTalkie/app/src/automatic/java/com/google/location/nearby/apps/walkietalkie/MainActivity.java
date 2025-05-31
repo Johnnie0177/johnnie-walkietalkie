@@ -5,9 +5,15 @@ import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
+
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,14 +25,18 @@ import android.text.SpannableString;
 import android.text.format.DateFormat;
 import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
+//import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.Strategy;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
@@ -107,6 +117,9 @@ public class MainActivity extends ConnectionsActivity {
   /** A running log of debug messages. Only visible when DEBUG=true. */
   private TextView mDebugLogView;
 
+  /** Button to launch image share. */
+  private Button mShareImgBt;
+
   /** Listens to holding/releasing the volume rocker. */
   private final GestureDetector mGestureDetector =
       new GestureDetector(KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_UP) {
@@ -132,6 +145,9 @@ public class MainActivity extends ConnectionsActivity {
   /** The phone's original media volume. */
   private int mOriginalVolume;
 
+  /** Media picker for picture selection. */
+  private ActivityResultLauncher<PickVisualMediaRequest> mMediaPicker;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -139,16 +155,84 @@ public class MainActivity extends ConnectionsActivity {
     getSupportActionBar()
         .setBackgroundDrawable(ContextCompat.getDrawable(this, R.drawable.actionBar));
 
+    mMediaPicker = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), new ImagePickerCallback<>());
     mPreviousStateView = (TextView) findViewById(R.id.previous_state);
     mCurrentStateView = (TextView) findViewById(R.id.current_state);
-
     mDebugLogView = (TextView) findViewById(R.id.debug_log);
     mDebugLogView.setVisibility(DEBUG ? View.VISIBLE : View.GONE);
     mDebugLogView.setMovementMethod(new ScrollingMovementMethod());
-
     mName = generateRandomName();
-
     ((TextView) findViewById(R.id.name)).setText(mName);
+
+    mShareImgBt = (Button) findViewById(R.id.shareImgBt);
+    mShareImgBt.setOnClickListener(new ShareImgListener());
+  }
+
+  class ShareImgListener implements View.OnClickListener {
+    public void onClick(View v) {
+      if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
+        logW("photo picker not available");
+        return;
+      }
+
+      ActivityResultContracts.PickVisualMedia.VisualMediaType mediaType =
+        (ActivityResultContracts.PickVisualMedia.VisualMediaType) ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE;
+      if (mediaType == null ) {
+        logW("null mediaType");
+        return;
+      }
+
+      PickVisualMediaRequest.Builder requestBuilder = new PickVisualMediaRequest.Builder();
+      if (requestBuilder == null ) {
+        logW("null requestBuilder");
+        return;
+      }
+
+      requestBuilder.setMediaType(mediaType);
+      PickVisualMediaRequest mediaRequest = requestBuilder.build();
+      if (mediaRequest == null ) {
+        logW("null mediaRequest");
+        return;
+      }
+
+      mMediaPicker.launch(mediaRequest);
+    }
+  }
+
+  class ImagePickerCallback<T> implements ActivityResultCallback<T> {
+    public void onActivityResult(T uri) {
+      if (uri == null) {
+        logW("null photo uri");
+        return;
+      }
+      Uri uriObj = (Uri)uri;
+      logD("uriObj: " + uriObj);
+
+      ParcelFileDescriptor pfd;
+      try {
+        pfd = getContentResolver().openFileDescriptor(uriObj, "r");
+      } catch(Exception e) {
+        logE("couldn't make pfd", e);
+        return;
+      }
+      Payload filePayload;
+      try {
+        filePayload = Payload.fromFile(pfd);
+      } catch(Exception e) {
+        logE("couldn't make payload from pfd", e);
+        return;
+      }
+      String payloadTypeStr = "unassigned";
+      switch (filePayload.getType()) {
+        case Payload.Type.BYTES: payloadTypeStr = "bytes"; break;
+        case Payload.Type.FILE: payloadTypeStr = "file"; break;
+        case Payload.Type.STREAM: payloadTypeStr = "stream"; break;
+        default: payloadTypeStr = "unknown";
+      }
+      logD("sending payload: " + filePayload);
+      logD("payload type: " + filePayload.getType() + ": " + payloadTypeStr);
+      send(filePayload);
+    }
   }
 
   @Override
@@ -440,6 +524,17 @@ public class MainActivity extends ConnectionsActivity {
   /** {@see ConnectionsActivity#onReceive(Endpoint, Payload)} */
   @Override
   protected void onReceive(Endpoint endpoint, Payload payload) {
+    logD("receive endpoint: " + endpoint);
+    logD("receive payload: " + payload);
+    String payloadTypeStr = "unassigned";
+    switch (payload.getType()) {
+      case Payload.Type.BYTES: payloadTypeStr = "bytes"; break;
+      case Payload.Type.FILE: payloadTypeStr = "file"; break;
+      case Payload.Type.STREAM: payloadTypeStr = "stream"; break;
+      default: payloadTypeStr = "unknown";
+    }
+    logD("receive type: " + payload.getType() + ": " + payloadTypeStr);
+
     if (payload.getType() == Payload.Type.STREAM) {
       if (mAudioPlayer != null) {
         mAudioPlayer.stop();
@@ -461,8 +556,14 @@ public class MainActivity extends ConnectionsActivity {
                   });
             }
           };
+      logD("receiving stream: starting audio player");
       mAudioPlayer = player;
       player.start();
+    }
+    else {
+      logD("receiving non-stream payload");
+      logD("saving file tbd");
+      // TODO: write file payload to local file system
     }
   }
 
