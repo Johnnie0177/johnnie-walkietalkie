@@ -265,7 +265,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
               @Override
               public void onFailure(@NonNull Exception e) {
                 mIsAdvertising = false;
-                logW("startAdvertising() failed.", e);
+                logW("startAdvertising() failed: " + e.getMessage(), e);
                 onAdvertisingFailed();
               }
             });
@@ -368,7 +368,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
               @Override
               public void onFailure(@NonNull Exception e) {
                 mIsDiscovering = false;
-                logW("startDiscovering() failed.", e);
+                logW("startDiscovering() failed: " + e.getMessage(), e);
                 onDiscoveryFailed();
               }
             });

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
@@ -21,6 +22,8 @@ import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
+
+import android.provider.MediaStore;
 import android.text.SpannableString;
 import android.text.format.DateFormat;
 import android.text.method.ScrollingMovementMethod;
@@ -36,6 +39,7 @@ import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
@@ -203,7 +207,30 @@ public class MainActivity extends ConnectionsActivity {
 
   class ShareImgListener02 implements View.OnClickListener {
     public void onClick(View v) {
-      logD("botton 02: tbd");
+      //String imageFilePath = "content://storage/self/primary/Download/20250601_192634.jpg";
+      //String imageFilePath = "content://media/internal/images/media";
+      //Uri imageFileUri = MediaStore.Images.Media.INTERNAL_CONTENT_URI;
+      File imageFileObj = new File("sdcard/Download/20250601_192634.jpg");
+      String imageFilePath = imageFileObj.toString();
+
+      //Uri.fromFile(new File("/sdcard/Download/20250601_192634.jpg")
+      Uri imageFileUri = Uri.parse(imageFilePath);
+      logD("imageFileUri: " + imageFileUri);
+      logD("exists: " + imageFileObj.exists());
+
+      //Intent intent = new Intent(MediaStore.ACTION_REVIEW, imageFileUri);
+      //Intent intent = new Intent(Intent.ACTION_PICK, imageFileUri);
+      //Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+      Intent intent = new Intent(Intent.ACTION_VIEW);
+      intent.setDataAndType(imageFileUri, "image/*");
+      try {
+        //startActivity( Intent.createChooser(intent, "Choose Application"));
+        //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
+        startActivityForResult(intent, 1234);
+      }
+      catch(Exception e) {
+        logD("error: " + e.getMessage());
+      }
     }
   }
 
