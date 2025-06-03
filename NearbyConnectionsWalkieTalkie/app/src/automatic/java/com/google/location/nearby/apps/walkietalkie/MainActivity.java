@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 
@@ -207,16 +208,41 @@ public class MainActivity extends ConnectionsActivity {
 
   class ShareImgListener02 implements View.OnClickListener {
     public void onClick(View v) {
+      String [] requiredPermissions = {
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+      };
+      if (Build.VERSION.SDK_INT < 23) {
+        logD("calling ActivityCompat.requestPermissions()");
+        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 2);
+        logD("done calling ActivityCompat.requestPermissions()");
+      } else {
+        logD("calling requestPermissions()");
+        requestPermissions(requiredPermissions, 2);
+        logD("done calling requestPermissions()");
+      }
+    }
+  }
+
+  class ShareImgListenerShowPicture implements View.OnClickListener {
+    public void onClick(View v) {
       //String imageFilePath = "content://storage/self/primary/Download/20250601_192634.jpg";
       //String imageFilePath = "content://media/internal/images/media";
       //Uri imageFileUri = MediaStore.Images.Media.INTERNAL_CONTENT_URI;
+      //File imageFileObj = new File(Environment.getExternalStorageDirectory(), "Download/20250601_192634.jpg");
       File imageFileObj = new File("sdcard/Download/20250601_192634.jpg");
       String imageFilePath = imageFileObj.toString();
+      logD("imageFilePath: " + imageFilePath);
+      logD("exists: " + imageFileObj.exists());
 
       //Uri.fromFile(new File("/sdcard/Download/20250601_192634.jpg")
       Uri imageFileUri = Uri.parse(imageFilePath);
       logD("imageFileUri: " + imageFileUri);
-      logD("exists: " + imageFileObj.exists());
+      logD("fileUriPath: " + imageFileUri.getPath());
+      logD("fileUriStr: " + imageFileUri.toString());
+
+      File confirmationFile = new File(imageFileUri.getPath());
+      logD("confirmationFile: " + confirmationFile);
+      logD("exists: " + confirmationFile.exists());
 
       //Intent intent = new Intent(MediaStore.ACTION_REVIEW, imageFileUri);
       //Intent intent = new Intent(Intent.ACTION_PICK, imageFileUri);

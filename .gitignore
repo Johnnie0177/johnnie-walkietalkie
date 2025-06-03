@@ -37,3 +37,4 @@ proguard-project.txt
 
 # Local convenience scripts
 deploy.sh
+NearbyConnectionsWalkieTalkie/deploy.sh

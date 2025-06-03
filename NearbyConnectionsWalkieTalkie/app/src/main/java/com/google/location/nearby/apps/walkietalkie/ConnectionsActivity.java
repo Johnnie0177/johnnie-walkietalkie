@@ -58,6 +58,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.ACCESS_WIFI_STATE,
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.NEARBY_WIFI_DEVICES,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
           };
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       REQUIRED_PERMISSIONS =
@@ -69,6 +70,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
           };
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       REQUIRED_PERMISSIONS =
@@ -79,6 +81,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
           };
     } else {
       REQUIRED_PERMISSIONS =
@@ -88,6 +91,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.ACCESS_WIFI_STATE,
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
           };
     }
   }
@@ -202,12 +206,23 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
   @Override
   protected void onStart() {
     super.onStart();
+
+    logD("sdk: " + Build.VERSION.SDK_INT);
+    logD("required permissions: "+ REQUIRED_PERMISSIONS.length);
+    for(String p : REQUIRED_PERMISSIONS) {
+      logD(p.substring(19));
+	}
+
     if (!hasPermissions(this, getRequiredPermissions())) {
       if (Build.VERSION.SDK_INT < 23) {
-        ActivityCompat.requestPermissions(
-            this, getRequiredPermissions(), REQUEST_CODE_REQUIRED_PERMISSIONS);
+        ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_REQUIRED_PERMISSIONS);
       } else {
-        requestPermissions(getRequiredPermissions(), REQUEST_CODE_REQUIRED_PERMISSIONS);
+        String [] requiredPermissions = getRequiredPermissions();
+        logD("calling requestPermisions(): " + requiredPermissions.length);
+        for(String p : requiredPermissions) {
+          logD(p.substring(19));
+        }
+        requestPermissions(requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
       }
     }
   }
@@ -215,20 +230,31 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
   /** Called when the user has accepted (or denied) our permission request. */
   @CallSuper
   @Override
-  public void onRequestPermissionsResult(
-      int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-    if (requestCode == REQUEST_CODE_REQUIRED_PERMISSIONS) {
-      int i = 0;
-      for (int grantResult : grantResults) {
-        if (grantResult == PackageManager.PERMISSION_DENIED) {
-          logW("Failed to request the permission " + permissions[i]);
-          Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
-          finish();
-          return;
-        }
-        i++;
+  public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    logD("permission result requestCode: " + requestCode);
+    boolean allGood = true;
+    for (int i = 0; i < grantResults.length; i++) {
+      int grantResult = grantResults[ i ];
+      String permission = permissions[ i ].substring(19);
+      if (grantResult == PackageManager.PERMISSION_DENIED) {
+        logW("permission " + permission + ": " + grantResult);
+        allGood = false;
       }
-      recreate();
+      else {
+        logD("permission " + permission + ": " + grantResult);
+      }
+      i++;
+    }
+
+    if (requestCode == REQUEST_CODE_REQUIRED_PERMISSIONS) {
+      if (allGood) {
+        recreate();
+      }
+      else {
+        Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
+        //finish();
+        return;
+      }
     }
 
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
