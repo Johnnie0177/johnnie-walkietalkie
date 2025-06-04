@@ -33,7 +33,10 @@ import android.text.style.ForegroundColorSpan;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
@@ -121,10 +124,11 @@ public class MainActivity extends ConnectionsActivity {
   /** A running log of debug messages. Only visible when DEBUG=true. */
   private TextView mDebugLogView;
 
-  /** Buttons to send pictures and test features. */
+  /** Buttons and dropdowns to send pictures and test features. */
   private Button mSendPictureButton;
-  private Button mOpenPictureButton;
   private Button mPermissionButton;
+  private Button mOpenPictureButton;
+  private Spinner mOpenPictureSpinner;
 
   /** Listens to holding/releasing the volume rocker. */
   private final GestureDetector mGestureDetector =
@@ -161,7 +165,6 @@ public class MainActivity extends ConnectionsActivity {
     getSupportActionBar()
         .setBackgroundDrawable(ContextCompat.getDrawable(this, R.drawable.actionBar));
 
-    mMediaPicker = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), new ImagePickerCallback<>());
     mPreviousStateView = (TextView) findViewById(R.id.previous_state);
     mCurrentStateView = (TextView) findViewById(R.id.current_state);
     mDebugLogView = (TextView) findViewById(R.id.debug_log);
@@ -170,16 +173,31 @@ public class MainActivity extends ConnectionsActivity {
     mName = generateRandomName();
     ((TextView) findViewById(R.id.name)).setText(mName);
 
+	// Media picker and send-picture button, per assignment.
+    mMediaPicker = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), new ImagePickerCallback<>());
     mSendPictureButton = (Button) findViewById(R.id.sendPictureButton);
     mSendPictureButton.setOnClickListener(new SendPictureListener());
+
+	// Experiments, requesting permissions and opening picture files.
+	// TODO: remove cruft post-experimentation
     mPermissionButton = (Button) findViewById(R.id.permissionButton);
     mPermissionButton.setOnClickListener(new PermissionListener());
+
+    //mOpenPictureSpinner = (Spinner) findViewById(R.id.openPictureSpinner);
+    //String [] spinnerItems = new String [] { "camera", "pictures", "download" };
+    //ArrayAdapter<String> openPictureAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, spinnerItems);
+    //mOpenPictureSpinner.setAdapter(openPictureAdapter);
+    //mOpenPictureSpinner.setOnItemSelectedListener(new OpenPictureListener());
+
     mOpenPictureButton = (Button) findViewById(R.id.openPictureButton);
     mOpenPictureButton.setOnClickListener(new OpenPictureListener());
   }
 
   class SendPictureListener implements View.OnClickListener {
     public void onClick(View v) {
+
+      // Get picture selection from user.
+
       if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
         logW("photo picker not available");
         return;
@@ -211,6 +229,10 @@ public class MainActivity extends ConnectionsActivity {
 
   class PermissionListener implements View.OnClickListener {
     public void onClick(View v) {
+
+      // Explicit call to re-request permissions, some of which are rejected on my
+      // device without soliciting the user.
+
       String [] requiredPermissions = {
         Manifest.permission.READ_EXTERNAL_STORAGE,
       };
@@ -226,13 +248,27 @@ public class MainActivity extends ConnectionsActivity {
     }
   }
 
-  class OpenPictureListener implements View.OnClickListener {
+  class OpenPictureListener implements View.OnClickListener, AdapterView.OnItemSelectedListener {
+    public void onItemSelected(AdapterView av, View v, int pos, long id) {
+      logD("selected item: " + id);
+    }
+    public void onNothingSelected(AdapterView av) {
+      logD("nothing selected");
+    }
+
     public void onClick(View v) {
+
+      // Experiments in opening a picture
+      // TODO: remove commented cruft
+
       //String imageFilePath = "content://storage/self/primary/Download/20250601_192634.jpg";
       //String imageFilePath = "content://media/internal/images/media";
       //Uri imageFileUri = MediaStore.Images.Media.INTERNAL_CONTENT_URI;
       //File imageFileObj = new File(Environment.getExternalStorageDirectory(), "Download/20250601_192634.jpg");
-      File imageFileObj = new File("sdcard/Download/TheCat.png");
+
+      //File imageFileObj = new File("sdcard/Download/TheCat.png");
+      File imageFileObj = new File("sdcard/Pictures/TheCat.jpg");
+      //File imageFileObj = new File("sdcard/DCIM/Camera/TheCat.png");
       String imageFilePath = imageFileObj.toString();
       logD("imageFilePath: " + imageFilePath);
       logD("exists: " + imageFileObj.exists());
@@ -253,9 +289,9 @@ public class MainActivity extends ConnectionsActivity {
       Intent intent = new Intent(Intent.ACTION_VIEW);
       intent.setDataAndType(imageFileUri, "image/*");
       try {
-        startActivity( Intent.createChooser(intent, "Choose Application"));
-        //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
         //startActivityForResult(intent, 1234);
+        //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
+        startActivity( Intent.createChooser(intent, "Choose Application"));
       }
       catch(Exception e) {
         logW("error: " + e.getMessage());
@@ -265,6 +301,10 @@ public class MainActivity extends ConnectionsActivity {
 
   class ImagePickerCallback<T> implements ActivityResultCallback<T> {
     public void onActivityResult(T uri) {
+
+      // User has selected picture, construct a file payload for it, and send it
+      // to the connected device.
+
       if (uri == null) {
         logW("null photo uri");
         return;
@@ -628,11 +668,25 @@ public class MainActivity extends ConnectionsActivity {
       logD("receiving file payload");
       Payload.File payloadFile = payload.asFile();
       Uri payloadUri = payloadFile.asUri();
-      File fileFromStr = new File(payloadUri.toString());
-      logD("fileFromStr: " + fileFromStr);
+      // TODO: determine if toString() or getPath() is best for checking file existence.
+      //File fileFromStr = new File(payloadUri.toString());
+      //logD("fileFromStr: " + fileFromStr);
       File fileFromPath = new File(payloadUri.getPath());
       logD("fileFromPath: " + fileFromPath);
-      // TODO: write file payload to local file system
+      if (!fileFromPath.exists()){
+        logW("file does not exist: " + fileFromPath);
+        return;
+      }
+
+      // File was received, open it.
+      Intent intent = new Intent(Intent.ACTION_VIEW);
+      intent.setDataAndType(payloadUri, "image/*");
+      try {
+        startActivity( Intent.createChooser(intent, "Choose Application"));
+      }
+      catch(Exception e) {
+        logW("error: " + e.getMessage());
+      }
     }
     else {
       logD("ignoring payload of type: " + payload.getType());

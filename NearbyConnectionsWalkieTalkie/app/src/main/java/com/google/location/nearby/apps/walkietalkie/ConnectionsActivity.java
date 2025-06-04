@@ -59,6 +59,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.NEARBY_WIFI_DEVICES,
             Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
           };
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       REQUIRED_PERMISSIONS =
@@ -71,6 +72,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
           };
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       REQUIRED_PERMISSIONS =
@@ -82,6 +84,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
           };
     } else {
       REQUIRED_PERMISSIONS =
@@ -92,6 +95,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
           };
     }
   }
