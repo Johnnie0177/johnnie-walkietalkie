@@ -121,9 +121,10 @@ public class MainActivity extends ConnectionsActivity {
   /** A running log of debug messages. Only visible when DEBUG=true. */
   private TextView mDebugLogView;
 
-  /** Buttons to launch share feature. */
-  private Button mShareButton01;
-  private Button mShareButton02;
+  /** Buttons to send pictures and test features. */
+  private Button mSendPictureButton;
+  private Button mOpenPictureButton;
+  private Button mPermissionButton;
 
   /** Listens to holding/releasing the volume rocker. */
   private final GestureDetector mGestureDetector =
@@ -169,13 +170,15 @@ public class MainActivity extends ConnectionsActivity {
     mName = generateRandomName();
     ((TextView) findViewById(R.id.name)).setText(mName);
 
-    mShareButton01 = (Button) findViewById(R.id.shareButton01);
-    mShareButton01.setOnClickListener(new ShareImgListener01());
-    mShareButton02 = (Button) findViewById(R.id.shareButton02);
-    mShareButton02.setOnClickListener(new ShareImgListener02());
+    mSendPictureButton = (Button) findViewById(R.id.sendPictureButton);
+    mSendPictureButton.setOnClickListener(new SendPictureListener());
+    mPermissionButton = (Button) findViewById(R.id.permissionButton);
+    mPermissionButton.setOnClickListener(new PermissionListener());
+    mOpenPictureButton = (Button) findViewById(R.id.openPictureButton);
+    mOpenPictureButton.setOnClickListener(new OpenPictureListener());
   }
 
-  class ShareImgListener01 implements View.OnClickListener {
+  class SendPictureListener implements View.OnClickListener {
     public void onClick(View v) {
       if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
         logW("photo picker not available");
@@ -206,7 +209,7 @@ public class MainActivity extends ConnectionsActivity {
     }
   }
 
-  class ShareImgListener02 implements View.OnClickListener {
+  class PermissionListener implements View.OnClickListener {
     public void onClick(View v) {
       String [] requiredPermissions = {
         Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -223,13 +226,13 @@ public class MainActivity extends ConnectionsActivity {
     }
   }
 
-  class ShareImgListenerShowPicture implements View.OnClickListener {
+  class OpenPictureListener implements View.OnClickListener {
     public void onClick(View v) {
       //String imageFilePath = "content://storage/self/primary/Download/20250601_192634.jpg";
       //String imageFilePath = "content://media/internal/images/media";
       //Uri imageFileUri = MediaStore.Images.Media.INTERNAL_CONTENT_URI;
       //File imageFileObj = new File(Environment.getExternalStorageDirectory(), "Download/20250601_192634.jpg");
-      File imageFileObj = new File("sdcard/Download/20250601_192634.jpg");
+      File imageFileObj = new File("sdcard/Download/TheCat.png");
       String imageFilePath = imageFileObj.toString();
       logD("imageFilePath: " + imageFilePath);
       logD("exists: " + imageFileObj.exists());
@@ -250,12 +253,12 @@ public class MainActivity extends ConnectionsActivity {
       Intent intent = new Intent(Intent.ACTION_VIEW);
       intent.setDataAndType(imageFileUri, "image/*");
       try {
-        //startActivity( Intent.createChooser(intent, "Choose Application"));
+        startActivity( Intent.createChooser(intent, "Choose Application"));
         //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
-        startActivityForResult(intent, 1234);
+        //startActivityForResult(intent, 1234);
       }
       catch(Exception e) {
-        logD("error: " + e.getMessage());
+        logW("error: " + e.getMessage());
       }
     }
   }
@@ -621,10 +624,18 @@ public class MainActivity extends ConnectionsActivity {
       mAudioPlayer = player;
       player.start();
     }
-    else {
-      logD("receiving non-stream payload");
-      logD("saving file tbd");
+    else if (payload.getType() == Payload.Type.FILE) {
+      logD("receiving file payload");
+      Payload.File payloadFile = payload.asFile();
+      Uri payloadUri = payloadFile.asUri();
+      File fileFromStr = new File(payloadUri.toString());
+      logD("fileFromStr: " + fileFromStr);
+      File fileFromPath = new File(payloadUri.getPath());
+      logD("fileFromPath: " + fileFromPath);
       // TODO: write file payload to local file system
+    }
+    else {
+      logD("ignoring payload of type: " + payload.getType());
     }
   }
 
