@@ -100,7 +100,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     }
   }
 
-  private static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
+  protected static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
 
   /** Our handler to Nearby Connections. */
   private ConnectionsClient mConnectionsClient;
@@ -219,10 +219,17 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
 
     if (!hasPermissions(this, getRequiredPermissions())) {
       if (Build.VERSION.SDK_INT < 23) {
+        String [] requiredPermissions = getRequiredPermissions();
+        logD("onStart() calling ActivityCompat.requestPermisions()");
+        logD("numPermissions: " + requiredPermissions.length);
+        for(String p : requiredPermissions) {
+          logD(p.substring(19));
+        }
         ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_REQUIRED_PERMISSIONS);
       } else {
         String [] requiredPermissions = getRequiredPermissions();
-        logD("calling requestPermisions(): " + requiredPermissions.length);
+        logD("onStart() calling requestPermisions()");
+        logD("numPermissions: " + requiredPermissions.length);
         for(String p : requiredPermissions) {
           logD(p.substring(19));
         }
@@ -235,20 +242,24 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
   @CallSuper
   @Override
   public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-    logD("permission result requestCode: " + requestCode);
+    logD("onRequestPermissionsResult()");
+    logD("numPermissions: " + permissions.length);
     boolean allGood = true;
-    for (int i = 0; i < grantResults.length; i++) {
-      int grantResult = grantResults[ i ];
+    for (int i = 0; i < permissions.length; i++) {
       String permission = permissions[ i ].substring(19);
-      if (grantResult == PackageManager.PERMISSION_DENIED) {
-        logW("permission " + permission + ": " + grantResult);
+      int grantResult = -2;
+      if (i < grantResults.length) {
+        grantResult = grantResults[ i ];
+	  }
+      if (grantResult != 0) {  // == PackageManager.PERMISSION_DENIED) {
+        logW("" + i + ") " + permission + ": " + grantResult);
         allGood = false;
       }
       else {
-        logD("permission " + permission + ": " + grantResult);
+        logD("" + i + ") " + permission + ": " + grantResult);
       }
-      i++;
     }
+    logD("finished reporting " + permissions.length + " permisions");
 
     if (requestCode == REQUEST_CODE_REQUIRED_PERMISSIONS) {
       if (allGood) {
@@ -257,7 +268,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
       else {
         Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
         //finish();
-        return;
+        //return;
       }
     }
 

@@ -234,16 +234,29 @@ public class MainActivity extends ConnectionsActivity {
       // device without soliciting the user.
 
       String [] requiredPermissions = {
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.BLUETOOTH_ADVERTISE,
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.ACCESS_WIFI_STATE,
+        Manifest.permission.CHANGE_WIFI_STATE,
+        Manifest.permission.NEARBY_WIFI_DEVICES,
         Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
       };
       if (Build.VERSION.SDK_INT < 23) {
-        logD("calling ActivityCompat.requestPermissions()");
-        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 2);
-        logD("done calling ActivityCompat.requestPermissions()");
+        logD("onClick() calling ActivityCompat.requestPermissions()");
+        logD("numPermissions: " + requiredPermissions.length);
+        for(String p : requiredPermissions) {
+          logD(p.substring(19));
+        }
+        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
       } else {
-        logD("calling requestPermissions()");
-        requestPermissions(requiredPermissions, 2);
-        logD("done calling requestPermissions()");
+        logD("onClick() calling requestPermissions()");
+        logD("numPermissions: " + requiredPermissions.length);
+        for(String p : requiredPermissions) {
+          logD(p.substring(19));
+        }
+        requestPermissions(requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
       }
     }
   }
