@@ -247,19 +247,18 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     boolean allGood = true;
     for (int i = 0; i < permissions.length; i++) {
       String permission = permissions[ i ].substring(19);
-      int grantResult = -2;
+      int grantResult = -99;
       if (i < grantResults.length) {
         grantResult = grantResults[ i ];
 	  }
-      if (grantResult != 0) {  // == PackageManager.PERMISSION_DENIED) {
-        logW("" + i + ") " + permission + ": " + grantResult);
-        allGood = false;
-      }
-      else {
+      if (grantResult == PackageManager.PERMISSION_GRANTED) {
         logD("" + i + ") " + permission + ": " + grantResult);
       }
+      else {
+        allGood = false;
+        logW("" + i + ") " + permission + ": " + grantResult);
+      }
     }
-    logD("finished reporting " + permissions.length + " permisions");
 
     if (requestCode == REQUEST_CODE_REQUIRED_PERMISSIONS) {
       if (allGood) {
