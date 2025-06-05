@@ -173,24 +173,25 @@ public class MainActivity extends ConnectionsActivity {
     mName = generateRandomName();
     ((TextView) findViewById(R.id.name)).setText(mName);
 
-	// Media picker and send-picture button, per assignment.
+    // Media picker and send-picture button, per assignment.
     mMediaPicker = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), new ImagePickerCallback<>());
     mSendPictureButton = (Button) findViewById(R.id.sendPictureButton);
     mSendPictureButton.setOnClickListener(new SendPictureListener());
 
-	// Experiments, requesting permissions and opening picture files.
-	// TODO: remove cruft post-experimentation
+    // Experiments, requesting permissions and opening picture files.
+    // TODO: remove cruft post-experimentation
     mPermissionButton = (Button) findViewById(R.id.permissionButton);
     mPermissionButton.setOnClickListener(new PermissionListener());
 
-    //mOpenPictureSpinner = (Spinner) findViewById(R.id.openPictureSpinner);
-    //String [] spinnerItems = new String [] { "camera", "pictures", "download" };
-    //ArrayAdapter<String> openPictureAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, spinnerItems);
-    //mOpenPictureSpinner.setAdapter(openPictureAdapter);
-    //mOpenPictureSpinner.setOnItemSelectedListener(new OpenPictureListener());
+    mOpenPictureSpinner = (Spinner) findViewById(R.id.openPictureSpinner);
+    OpenPictureListener openPictureListener = new OpenPictureListener();
+    String [] spinnerItems = openPictureListener.getSelections();
+    ArrayAdapter<String> openPictureAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, spinnerItems);
+    mOpenPictureSpinner.setAdapter(openPictureAdapter);
+    mOpenPictureSpinner.setOnItemSelectedListener(openPictureListener);
 
-    mOpenPictureButton = (Button) findViewById(R.id.openPictureButton);
-    mOpenPictureButton.setOnClickListener(new OpenPictureListener());
+    //mOpenPictureButton = (Button) findViewById(R.id.openPictureButton);
+    //mOpenPictureButton.setOnClickListener(new OpenPictureListener());
   }
 
   class SendPictureListener implements View.OnClickListener {
@@ -205,20 +206,20 @@ public class MainActivity extends ConnectionsActivity {
 
       ActivityResultContracts.PickVisualMedia.VisualMediaType mediaType =
         (ActivityResultContracts.PickVisualMedia.VisualMediaType) ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE;
-      if (mediaType == null ) {
+      if (mediaType == null) {
         logW("null mediaType");
         return;
       }
 
       PickVisualMediaRequest.Builder requestBuilder = new PickVisualMediaRequest.Builder();
-      if (requestBuilder == null ) {
+      if (requestBuilder == null) {
         logW("null requestBuilder");
         return;
       }
 
       requestBuilder.setMediaType(mediaType);
       PickVisualMediaRequest mediaRequest = requestBuilder.build();
-      if (mediaRequest == null ) {
+      if (mediaRequest == null) {
         logW("null mediaRequest");
         return;
       }
@@ -249,62 +250,106 @@ public class MainActivity extends ConnectionsActivity {
         for(String p : requiredPermissions) {
           logD(p.substring(19));
         }
-        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
+        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 2);
       } else {
         logD("onClick() calling requestPermissions()");
         logD("numPermissions: " + requiredPermissions.length);
         for(String p : requiredPermissions) {
           logD(p.substring(19));
         }
-        requestPermissions(requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
+        requestPermissions(requiredPermissions, 2);
       }
     }
   }
 
   class OpenPictureListener implements View.OnClickListener, AdapterView.OnItemSelectedListener {
-    public void onItemSelected(AdapterView av, View v, int pos, long id) {
-      logD("selected item: " + id);
+    private int readyCount = 2;
+    private String [] actions = { "view", "get", "pick", "review" };
+    private String [] intents = { "res", "res/ch", "chooser" };
+
+    public String [] getSelections() {
+      String [] choices = new String[actions.length * intents.length];
+      for (int a = 0; a < actions.length; a++) {
+        for (int i = 0; i < intents.length; i++) {
+          choices[a * intents.length + i] = actions[a] + ":" + intents[i];
+        }
+      }
+      return choices;
     }
+
+    public void onItemSelected(AdapterView av, View v, int pos, long id) {
+      if (readyCount > 0) {
+        logW("item selector not ready: " + readyCount);
+        readyCount--;
+        return;
+      }
+
+      String
+        //filePath = "sdcard/DCIM/Camera/IMG_20250530_130120865_HDR.jpg";
+        //filePath = "sdcard/Pictures/TheCat.jpg";
+        filePath = "sdcard/Download/TheCat.png";
+      File fileObj = new File(filePath);
+      logD("fileObj: " + fileObj);
+      if (!fileObj.exists()){
+        logW("file does not exist: " + fileObj);
+        return;
+      }
+
+      int opBits = (int)id;
+      int actionIndex = opBits / intents.length;
+      int intentIndex = opBits % intents.length;
+
+      Intent intent;
+      switch (actionIndex) {
+      case 0: // view
+        intent = new Intent(Intent.ACTION_VIEW);
+        break;
+      case 1: // get
+        intent = new Intent(Intent.ACTION_GET_CONTENT);
+        break;
+      case 2: // pick
+        intent = new Intent(Intent.ACTION_PICK);
+        break;
+      case 3: // review
+        intent = new Intent(MediaStore.ACTION_REVIEW);
+        break;
+      default:
+        logW("action not recognized: " + actionIndex);
+        return;
+      }
+
+      Uri imageFileUri = Uri.parse(fileObj.toString());
+      intent.setDataAndType(imageFileUri, "image/*");
+      try {
+        switch (intentIndex) {
+        case 0: // result
+          startActivityForResult(intent, 1234);
+          break;
+        case 1: // result and chooser
+          startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
+          break;
+        case 2: // chooser
+          startActivity( Intent.createChooser(intent, "Choose Application"));
+          break;
+        default:
+          logW("intent not recognized: " + intentIndex);
+          return;
+        }
+      }
+      catch(Exception e) {
+        logW("error: " + e.getMessage());
+      }
+    }
+
     public void onNothingSelected(AdapterView av) {
       logD("nothing selected");
     }
 
     public void onClick(View v) {
-
-      // Experiments in opening a picture
-      // TODO: remove commented cruft
-
-      //String imageFilePath = "content://storage/self/primary/Download/20250601_192634.jpg";
-      //String imageFilePath = "content://media/internal/images/media";
-      //Uri imageFileUri = MediaStore.Images.Media.INTERNAL_CONTENT_URI;
-      //File imageFileObj = new File(Environment.getExternalStorageDirectory(), "Download/20250601_192634.jpg");
-
-      //File imageFileObj = new File("sdcard/Download/TheCat.png");
-      File imageFileObj = new File("sdcard/Pictures/TheCat.jpg");
-      //File imageFileObj = new File("sdcard/DCIM/Camera/TheCat.png");
-      String imageFilePath = imageFileObj.toString();
-      logD("imageFilePath: " + imageFilePath);
-      logD("exists: " + imageFileObj.exists());
-
-      //Uri.fromFile(new File("/sdcard/Download/20250601_192634.jpg")
-      Uri imageFileUri = Uri.parse(imageFilePath);
-      logD("imageFileUri: " + imageFileUri);
-      logD("fileUriPath: " + imageFileUri.getPath());
-      logD("fileUriStr: " + imageFileUri.toString());
-
-      File confirmationFile = new File(imageFileUri.getPath());
-      logD("confirmationFile: " + confirmationFile);
-      logD("exists: " + confirmationFile.exists());
-
-      //Intent intent = new Intent(MediaStore.ACTION_REVIEW, imageFileUri);
-      //Intent intent = new Intent(Intent.ACTION_PICK, imageFileUri);
-      //Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-      Intent intent = new Intent(Intent.ACTION_VIEW);
-      intent.setDataAndType(imageFileUri, "image/*");
+      Intent intent = new Intent(Intent.ACTION_PICK);
+      intent.setType("image/*");
       try {
-        //startActivityForResult(intent, 1234);
-        //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
-        startActivity( Intent.createChooser(intent, "Choose Application"));
+        startActivity( Intent.createChooser(intent, "Choose Picture"));
       }
       catch(Exception e) {
         logW("error: " + e.getMessage());

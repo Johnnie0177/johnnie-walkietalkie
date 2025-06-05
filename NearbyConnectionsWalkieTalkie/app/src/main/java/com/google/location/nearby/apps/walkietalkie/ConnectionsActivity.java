@@ -100,7 +100,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     }
   }
 
-  protected static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
+  private static final int REQUEST_CODE_REQUIRED_PERMISSIONS = 1;
 
   /** Our handler to Nearby Connections. */
   private ConnectionsClient mConnectionsClient;
@@ -267,7 +267,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
       else {
         Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
         //finish();
-        //return;
+        return;
       }
     }
 
@@ -600,14 +600,20 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
    * Returns {@code true} if the app was granted all the permissions. Otherwise, returns {@code
    * false}.
    */
-  public static boolean hasPermissions(Context context, String... permissions) {
+  public boolean hasPermissions(Context context, String... permissions) {
+    logD("hasPermissions():");
+    boolean allGood = true;
     for (String permission : permissions) {
-      if (ContextCompat.checkSelfPermission(context, permission)
-          != PackageManager.PERMISSION_GRANTED) {
-        return false;
+      int permissionVal = ContextCompat.checkSelfPermission(context, permission);
+      if (permissionVal == PackageManager.PERMISSION_GRANTED) {
+        logD("granted: " + permission.substring(19));
+      } else {
+        allGood = false;
+        logW("denied: " + permission.substring(19));
       }
     }
-    return true;
+    logD("hasPermissions() returning: " + allGood);
+    return allGood;
   }
 
   @CallSuper
