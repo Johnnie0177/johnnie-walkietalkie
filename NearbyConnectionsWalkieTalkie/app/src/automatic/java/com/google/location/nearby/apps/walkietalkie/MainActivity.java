@@ -1,10 +1,15 @@
 package com.google.location.nearby.apps.walkietalkie;
 
+import static com.google.android.gms.common.util.IOUtils.copyStream;
+
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
@@ -44,7 +49,10 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -126,9 +134,11 @@ public class MainActivity extends ConnectionsActivity {
 
   /** Buttons and dropdowns to send pictures and test features. */
   private Button mSendPictureButton;
-  private Button mPermissionButton;
-  private Button mOpenPictureButton;
-  private Spinner mOpenPictureSpinner;
+  private Button mTest01Button;
+  private Button mTest02Button;
+  private Spinner mSpinner01;
+  private Spinner mSpinner02;
+  private Spinner mSpinner03;
 
   /** Listens to holding/releasing the volume rocker. */
   private final GestureDetector mGestureDetector =
@@ -180,180 +190,230 @@ public class MainActivity extends ConnectionsActivity {
 
     // Experiments, requesting permissions and opening picture files.
     // TODO: remove cruft post-experimentation
-    mPermissionButton = (Button) findViewById(R.id.permissionButton);
-    mPermissionButton.setOnClickListener(new PermissionListener());
+    mTest01Button = (Button) findViewById(R.id.test01Button);
+    mTest01Button.setOnClickListener(new Test01Listener());
 
-    mOpenPictureSpinner = (Spinner) findViewById(R.id.openPictureSpinner);
-    OpenPictureListener openPictureListener = new OpenPictureListener();
-    String [] spinnerItems = openPictureListener.getSelections();
-    ArrayAdapter<String> openPictureAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, spinnerItems);
-    mOpenPictureSpinner.setAdapter(openPictureAdapter);
-    mOpenPictureSpinner.setOnItemSelectedListener(openPictureListener);
+    mTest02Button = (Button) findViewById(R.id.test02Button);
+    mTest02Button.setOnClickListener(new Test02Listener());
 
-    //mOpenPictureButton = (Button) findViewById(R.id.openPictureButton);
-    //mOpenPictureButton.setOnClickListener(new OpenPictureListener());
+    ArrayAdapter<String> adapter = null;
+    int spinnerLayout = android.R.layout.simple_spinner_dropdown_item;
+    String [] spinnerItems = null;
+
+    mSpinner01 = (Spinner) findViewById(R.id.spinner01);
+    Spinner01Listener spinner01Listener = new Spinner01Listener();
+    spinnerItems = spinner01Listener.getSelections();
+    adapter = new ArrayAdapter<>(this, spinnerLayout, spinnerItems);
+    mSpinner01.setAdapter(adapter);
+    mSpinner01.setOnItemSelectedListener(spinner01Listener);
+
+    mSpinner02 = (Spinner) findViewById(R.id.spinner02);
+    Spinner02Listener spinner02Listener = new Spinner02Listener();
+    spinnerItems = spinner02Listener.getSelections();
+    adapter = new ArrayAdapter<>(this, spinnerLayout, spinnerItems);
+    mSpinner02.setAdapter(adapter);
+    mSpinner02.setOnItemSelectedListener(spinner02Listener);
+
+    mSpinner03 = (Spinner) findViewById(R.id.spinner03);
+    Spinner03Listener spinner03Listener = new Spinner03Listener();
+    spinnerItems = spinner03Listener.getSelections();
+    adapter = new ArrayAdapter<>(this, spinnerLayout, spinnerItems);
+    mSpinner03.setAdapter(adapter);
+    mSpinner03.setOnItemSelectedListener(spinner03Listener);
+
   }
 
-  class SendPictureListener implements View.OnClickListener {
+  private String [] mOpenChoices = { "show file", "choose app", };
+  private int mOpenMode = 0;
+  private String [] mDataChoices = { "set path", "ignore path", };
+  private int mDataMode = 0;
+  private String [] mActionChoices = { "pick", "view", "review", "get content", "main", };
+  private int mActionMode = 0;
+
+  class Test01Listener implements View.OnClickListener {
     public void onClick(View v) {
-
-      // Get picture selection from user.
-
-      if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
-        logW("photo picker not available");
-        return;
-      }
-
-      ActivityResultContracts.PickVisualMedia.VisualMediaType mediaType =
-        (ActivityResultContracts.PickVisualMedia.VisualMediaType) ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE;
-      if (mediaType == null) {
-        logW("null mediaType");
-        return;
-      }
-
-      PickVisualMediaRequest.Builder requestBuilder = new PickVisualMediaRequest.Builder();
-      if (requestBuilder == null) {
-        logW("null requestBuilder");
-        return;
-      }
-
-      requestBuilder.setMediaType(mediaType);
-      PickVisualMediaRequest mediaRequest = requestBuilder.build();
-      if (mediaRequest == null) {
-        logW("null mediaRequest");
-        return;
-      }
-
-      mMediaPicker.launch(mediaRequest);
+      //listApplications();
+      //listPackages();
+      openFile("sdcard/Pictures/TheCat.png");
     }
   }
 
-  class PermissionListener implements View.OnClickListener {
-    public void onClick(View v) {
+  protected void openFile(String fileName) {
+    logD("open file: " + fileName);
+    logD("ActionMode: " + mActionChoices[mActionMode]);
+    logD("DataMode: " + mDataChoices[mDataMode]);
+    logD("OpenMode: " + mOpenChoices[mOpenMode]);
 
-      // Explicit call to re-request permissions, some of which are rejected on my
-      // device without soliciting the user.
+    Intent intent = null;
+    switch (mActionMode) {
+      case 0: intent = new Intent(Intent.ACTION_PICK); break;
+      case 1: intent = new Intent(Intent.ACTION_VIEW); break;
+      case 2: intent = new Intent(MediaStore.ACTION_REVIEW); break;
+      case 3: intent = new Intent(Intent.ACTION_GET_CONTENT); break;
+      case 4: intent = new Intent(Intent.ACTION_MAIN); break;
+      default:
+        logW("unrecognized action mode: " + mActionMode);
+        return;
+    }
+    logD("intent: " + intent);
+    intent.setType("image/*");
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-      String [] requiredPermissions = {
-        Manifest.permission.BLUETOOTH_SCAN,
-        Manifest.permission.BLUETOOTH_ADVERTISE,
-        Manifest.permission.BLUETOOTH_CONNECT,
-        Manifest.permission.ACCESS_WIFI_STATE,
-        Manifest.permission.CHANGE_WIFI_STATE,
-        Manifest.permission.NEARBY_WIFI_DEVICES,
-        Manifest.permission.READ_EXTERNAL_STORAGE,
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-      };
-      if (Build.VERSION.SDK_INT < 23) {
-        logD("onClick() calling ActivityCompat.requestPermissions()");
-        logD("numPermissions: " + requiredPermissions.length);
-        for(String p : requiredPermissions) {
-          logD(p.substring(19));
-        }
-        ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 2);
-      } else {
-        logD("onClick() calling requestPermissions()");
-        logD("numPermissions: " + requiredPermissions.length);
-        for(String p : requiredPermissions) {
-          logD(p.substring(19));
-        }
-        requestPermissions(requiredPermissions, 2);
+    //String packageName = "com.google.android.apps.nbu.files";
+    //intent.setData(Uri.parse("market://details?id=" + packageName));
+
+    switch (mDataMode) {
+      case 0:
+        intent.setData(Uri.parse(fileName));
+        break;
+      case 1:
+        // ignore file name
+        break;
+      default:
+        logW("unrecognized data mode: " + mDataMode);
+        return;
+    }
+
+    try {
+      switch (mOpenMode) {
+        case 0:
+          startActivity(intent);
+          break;
+        case 1:
+          startActivity(Intent.createChooser(intent, "Choose"));
+          break;
+        default:
+          logW("unrecognized open mode: " + mOpenMode);
+          return;
       }
+    }
+    catch(Exception e) {
+      logW("error: " + e.getMessage());
     }
   }
 
-  class OpenPictureListener implements View.OnClickListener, AdapterView.OnItemSelectedListener {
-    private int readyCount = 2;
-    private String [] actions = { "view", "get", "pick", "review" };
-    private String [] intents = { "res", "res/ch", "chooser" };
+  protected void listApplications() {
+    logD("listApplications()");
+    PackageManager pm = getPackageManager();
+    List<ApplicationInfo> appList = pm.getInstalledApplications(PackageManager.GET_META_DATA);
+    int index = 0;
+    for (ApplicationInfo info : appList) {
+      String name = info.name;
+      if (name != null) {
+        logD("" + index + ": " + info.name);
+      }
+      index++;
+    }
+  }
 
+  protected void listPackages() {
+    logD("listPackages()");
+    PackageManager pm = getPackageManager();
+    List<PackageInfo> packageList = pm.getInstalledPackages(PackageManager.GET_META_DATA);
+    int index = 0;
+    for (PackageInfo info : packageList) {
+      String name = info.packageName;
+      logD("" + index + ": " + name);
+      index++;
+    }
+  }
+
+  class Test02Listener implements View.OnClickListener {
+    public void onClick(View v) {
+      redoPermissionsRequest();
+    }
+  }
+
+  protected void redoPermissionsRequest() {
+    String [] requiredPermissions = {
+      Manifest.permission.BLUETOOTH_SCAN,
+      Manifest.permission.BLUETOOTH_ADVERTISE,
+      Manifest.permission.BLUETOOTH_CONNECT,
+      Manifest.permission.ACCESS_WIFI_STATE,
+      Manifest.permission.CHANGE_WIFI_STATE,
+      Manifest.permission.NEARBY_WIFI_DEVICES,
+      Manifest.permission.READ_EXTERNAL_STORAGE,
+      Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    };
+    if (Build.VERSION.SDK_INT < 23) {
+      logD("onClick() calling ActivityCompat.requestPermissions()");
+      logD("numPermissions: " + requiredPermissions.length);
+      for(String p : requiredPermissions) {
+        logD(p.substring(19));
+      }
+      ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 2);
+    } else {
+      logD("re-requesting permissions: " + requiredPermissions.length);
+      //for(String p : requiredPermissions) {
+      //  logD(p.substring(19));
+      //}
+      requestPermissions(requiredPermissions, 2);
+    }
+  }
+
+  private void openImageToView() {
+    logD("open image type with market uri");
+    Intent intent = new Intent(Intent.ACTION_VIEW);
+    //Intent intent = new Intent(Intent.ACTION_MAIN);
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    intent.setType("image/*");
+    //intent.setData(Uri.parse("sdcard/Pictures/TheCat.png"));
+    //String packageName = "com.google.android.apps.nbu.files";
+    //intent.setData(Uri.parse("market://details?id=" + packageName));
+    try {
+      //startActivity(intent);
+      startActivity(Intent.createChooser(intent, "Choose"));
+    }
+    catch(Exception e) {
+      logW("error: " + e.getMessage());
+    }
+  }
+
+  class Spinner01Listener implements AdapterView.OnItemSelectedListener {
     public String [] getSelections() {
-      String [] choices = new String[actions.length * intents.length];
-      for (int a = 0; a < actions.length; a++) {
-        for (int i = 0; i < intents.length; i++) {
-          choices[a * intents.length + i] = actions[a] + ":" + intents[i];
-        }
-      }
-      return choices;
+      return mOpenChoices;
     }
 
     public void onItemSelected(AdapterView av, View v, int pos, long id) {
-      if (readyCount > 0) {
-        logW("item selector not ready: " + readyCount);
-        readyCount--;
-        return;
-      }
-
-      String
-        //filePath = "sdcard/DCIM/Camera/IMG_20250530_130120865_HDR.jpg";
-        //filePath = "sdcard/Pictures/TheCat.jpg";
-        filePath = "sdcard/Download/TheCat.png";
-      File fileObj = new File(filePath);
-      logD("fileObj: " + fileObj);
-      if (!fileObj.exists()){
-        logW("file does not exist: " + fileObj);
-        return;
-      }
-
-      int opBits = (int)id;
-      int actionIndex = opBits / intents.length;
-      int intentIndex = opBits % intents.length;
-
-      Intent intent;
-      switch (actionIndex) {
-      case 0: // view
-        intent = new Intent(Intent.ACTION_VIEW);
-        break;
-      case 1: // get
-        intent = new Intent(Intent.ACTION_GET_CONTENT);
-        break;
-      case 2: // pick
-        intent = new Intent(Intent.ACTION_PICK);
-        break;
-      case 3: // review
-        intent = new Intent(MediaStore.ACTION_REVIEW);
-        break;
-      default:
-        logW("action not recognized: " + actionIndex);
-        return;
-      }
-
-      Uri imageFileUri = Uri.parse(fileObj.toString());
-      intent.setDataAndType(imageFileUri, "image/*");
-      try {
-        switch (intentIndex) {
-        case 0: // result
-          startActivityForResult(intent, 1234);
-          break;
-        case 1: // result and chooser
-          startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
-          break;
-        case 2: // chooser
-          startActivity( Intent.createChooser(intent, "Choose Application"));
-          break;
-        default:
-          logW("intent not recognized: " + intentIndex);
-          return;
-        }
-      }
-      catch(Exception e) {
-        logW("error: " + e.getMessage());
-      }
+      logD("spinner 01 selection: " + id);
+      mOpenMode = (int)id;
+      logD("Open mode: " + mOpenChoices[mOpenMode]);
     }
 
     public void onNothingSelected(AdapterView av) {
       logD("nothing selected");
     }
+  }
 
-    public void onClick(View v) {
-      Intent intent = new Intent(Intent.ACTION_PICK);
-      intent.setType("image/*");
-      try {
-        startActivity( Intent.createChooser(intent, "Choose Picture"));
-      }
-      catch(Exception e) {
-        logW("error: " + e.getMessage());
-      }
+  class Spinner02Listener implements AdapterView.OnItemSelectedListener {
+    public String [] getSelections() {
+      return mDataChoices;
+    }
+
+    public void onItemSelected(AdapterView av, View v, int pos, long id) {
+      logD("spinner 02 selection: " + id);
+      mDataMode = (int)id;
+      logD("Data mode: " + mDataChoices[mDataMode]);
+    }
+
+    public void onNothingSelected(AdapterView av) {
+      logD("nothing selected");
+    }
+  }
+
+  class Spinner03Listener implements AdapterView.OnItemSelectedListener {
+    public String [] getSelections() {
+      return mActionChoices;
+    }
+
+    public void onItemSelected(AdapterView av, View v, int pos, long id) {
+      logD("spinner 02 selection: " + id);
+      mActionMode = (int)id;
+      logD("Action mode: " + mActionChoices[mActionMode]);
+    }
+
+    public void onNothingSelected(AdapterView av) {
+      logD("nothing selected");
     }
   }
 
@@ -394,6 +454,29 @@ public class MainActivity extends ConnectionsActivity {
       logD("sending payload: " + filePayload);
       logD("payload type: " + filePayload.getType() + ": " + payloadTypeStr);
       send(filePayload);
+    }
+  }
+
+  class SendPictureListener implements View.OnClickListener {
+    public void onClick(View v) {
+
+      // Get picture selection from user.
+
+      if (!ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
+        logW("photo picker not available");
+        return;
+      }
+
+      try {
+        ActivityResultContracts.PickVisualMedia.VisualMediaType mediaType =
+          (ActivityResultContracts.PickVisualMedia.VisualMediaType) ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE;
+        PickVisualMediaRequest.Builder requestBuilder = new PickVisualMediaRequest.Builder();
+        requestBuilder.setMediaType(mediaType);
+        PickVisualMediaRequest mediaRequest = requestBuilder.build();
+        mMediaPicker.launch(mediaRequest);
+      } catch(Exception e) {
+        logW("error: " + e.getMessage());
+      }
     }
   }
 
@@ -695,7 +778,7 @@ public class MainActivity extends ConnectionsActivity {
       case Payload.Type.STREAM: payloadTypeStr = "stream"; break;
       default: payloadTypeStr = "unknown";
     }
-    logD("receive type: " + payload.getType() + ": " + payloadTypeStr);
+    logD("receive type " + payload.getType() + ": " + payloadTypeStr);
 
     if (payload.getType() == Payload.Type.STREAM) {
       if (mAudioPlayer != null) {
@@ -703,52 +786,91 @@ public class MainActivity extends ConnectionsActivity {
         mAudioPlayer = null;
       }
 
-      AudioPlayer player =
-          new AudioPlayer(payload.asStream().asInputStream()) {
-            @WorkerThread
+      AudioPlayer player = new AudioPlayer(payload.asStream().asInputStream()) {
+        @WorkerThread
+        @Override
+        protected void onFinish() {
+          runOnUiThread(new Runnable() {
+            @UiThread
             @Override
-            protected void onFinish() {
-              runOnUiThread(
-                  new Runnable() {
-                    @UiThread
-                    @Override
-                    public void run() {
-                      mAudioPlayer = null;
-                    }
-                  });
+            public void run() {
+              mAudioPlayer = null;
             }
-          };
+          });
+        }
+      };
       logD("receiving stream: starting audio player");
       mAudioPlayer = player;
       player.start();
     }
     else if (payload.getType() == Payload.Type.FILE) {
-      logD("receiving file payload");
-      Payload.File payloadFile = payload.asFile();
-      Uri payloadUri = payloadFile.asUri();
-      // TODO: determine if toString() or getPath() is best for checking file existence.
-      //File fileFromStr = new File(payloadUri.toString());
-      //logD("fileFromStr: " + fileFromStr);
-      File fileFromPath = new File(payloadUri.getPath());
-      logD("fileFromPath: " + fileFromPath);
-      if (!fileFromPath.exists()){
-        logW("file does not exist: " + fileFromPath);
-        return;
-      }
-
-      // File was received, open it.
-      Intent intent = new Intent(Intent.ACTION_VIEW);
-      intent.setDataAndType(payloadUri, "image/*");
-      try {
-        startActivity( Intent.createChooser(intent, "Choose Application"));
-      }
-      catch(Exception e) {
-        logW("error: " + e.getMessage());
-      }
+      Uri payloadUri = payload.asFile().asUri();
+      logD("file payload started: " + payloadUri);
+      mCurrentEndpoint = endpoint;
+      mCurrentPayload = payload;
     }
     else {
       logD("ignoring payload of type: " + payload.getType());
     }
+  }
+
+  private Endpoint mCurrentEndpoint = null;
+  private Payload mCurrentPayload = null;
+
+  /** {@see ConnectionsActivity#onTransferComplete(Endpoint)} */
+  @Override
+  protected void onTransferComplete(Endpoint endpoint) {
+    Payload payload = mCurrentPayload;
+    boolean mismatch = (endpoint != mCurrentEndpoint || payload == null);
+    mCurrentEndpoint = null;
+    mCurrentPayload = null;
+    if (mismatch) {
+      logW("payload transfer mismatch");
+      return;
+    }
+    Uri payloadUri = payload.asFile().asUri();
+    logD("file payload complete: " + payloadUri);
+
+    String fileName = "Wt_" + System.currentTimeMillis() + ".jpg";
+    logD("local file name: " + fileName);
+
+    // Write payload to a local file.
+    File fileObj = null;
+    try {
+      //File cacheFile = new File(this.getCacheDir(), fileName);
+      fileObj = new File("sdcard/Pictures", fileName);
+      logD("local file path: " + fileObj);
+      InputStream in = this.getContentResolver().openInputStream(payloadUri);
+      logD("starting stream copy");
+      copyStream(in, new FileOutputStream(fileObj));
+      logD("done stream copy");
+    } catch (Exception e) {
+      logW("error: " + e.getMessage());
+    } finally {
+      this.getContentResolver().delete(payloadUri, null, null);
+    }
+
+    if (fileObj == null || !fileObj.exists()){
+      logW("file creation failed: " + fileObj);
+      return;
+    }
+    logD("file written: " + fileObj);
+    logD("file size: " + fileObj.length());
+    openFile(fileObj.toString());
+
+    /*
+    Uri fileUri = Uri.parse(fileObj.toString());
+    logD("viewing fileUri: " + fileUri);
+    Intent intent = new Intent(Intent.ACTION_PICK);
+    intent.setDataAndType(fileUri, "image/*");
+    try {
+      //startActivityForResult(Intent.createChooser(intent, "Select Picture"), 1234);
+      startActivity( Intent.createChooser(intent, "Choose Application"));
+    }
+    catch(Exception e) {
+      logW("error: " + e.getMessage());
+    }
+    */
   }
 
   /** Stops all currently streaming audio tracks. */

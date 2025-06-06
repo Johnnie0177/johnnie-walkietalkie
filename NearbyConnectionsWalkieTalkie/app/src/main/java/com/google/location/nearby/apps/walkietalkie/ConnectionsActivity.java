@@ -175,29 +175,34 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
       };
 
   /** Callbacks for payloads (bytes of data) sent from another device to us. */
-  private final PayloadCallback mPayloadCallback =
-      new PayloadCallback() {
-        @Override
-        public void onPayloadReceived(String endpointId, Payload payload) {
-          logD(String.format("onPayloadReceived(endpointId=%s, payload=%s)", endpointId, payload));
-          onReceive(mEstablishedConnections.get(endpointId), payload);
-        }
+  private final PayloadCallback mPayloadCallback = new PayloadCallback() {
+    @Override
+    public void onPayloadReceived(String endpointId, Payload payload) {
+      logD("onPayloadReceived() endpointId: " + endpointId);
+      ConnectionsActivity.Endpoint endpointConnection = mEstablishedConnections.get(endpointId);
+      logD("endpoint connection: " + endpointConnection);
+      onReceive(endpointConnection, payload);
+    }
 
-        @Override
-        public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
-          logD(String.format("onPayloadTransferUpdate(endpointId=%s, update=%s)", endpointId, update));
-          String statusStr = "unassigned";
-          switch (update.getStatus()) {
-            case PayloadTransferUpdate.Status.SUCCESS: statusStr = "success"; break;
-            case PayloadTransferUpdate.Status.IN_PROGRESS: statusStr = "in progress"; break;
-            case PayloadTransferUpdate.Status.CANCELED: statusStr = "canceled"; break;
-            case PayloadTransferUpdate.Status.FAILURE: statusStr = "failure"; break;
-            default: statusStr = "(unknown)";
-          }
-          logD("update status: " + update.getStatus() + ": " + statusStr);
-          logD("bytes transferred: " + update.getBytesTransferred());
-        }
-      };
+    @Override
+    public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) {
+      logD("onPayloadTransferUpdate() endpointId: " + endpointId);
+      String statusStr = "unassigned";
+      int statusValue = update.getStatus();
+      switch (statusValue) {
+        case PayloadTransferUpdate.Status.SUCCESS: statusStr = "success"; break;
+        case PayloadTransferUpdate.Status.IN_PROGRESS: statusStr = "in progress"; break;
+        case PayloadTransferUpdate.Status.CANCELED: statusStr = "canceled"; break;
+        case PayloadTransferUpdate.Status.FAILURE: statusStr = "failure"; break;
+        default: statusStr = "(unknown)";
+      }
+      logD("update status (" + endpointId + ") " + update.getStatus() + ": " + statusStr);
+      logD("bytes transferred: " + update.getBytesTransferred());
+      if (statusValue == PayloadTransferUpdate.Status.SUCCESS) {
+        onTransferComplete(mEstablishedConnections.get(endpointId));
+      }
+    }
+  };
 
   /** Called when our Activity is first created. */
   @Override
@@ -212,27 +217,27 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     super.onStart();
 
     logD("sdk: " + Build.VERSION.SDK_INT);
-    logD("required permissions: "+ REQUIRED_PERMISSIONS.length);
-    for(String p : REQUIRED_PERMISSIONS) {
-      logD(p.substring(19));
-	}
+    //logD("required permissions: "+ REQUIRED_PERMISSIONS.length);
+    //for(String p : REQUIRED_PERMISSIONS) {
+    //  logD(p.substring(19));
+	  //}
 
     if (!hasPermissions(this, getRequiredPermissions())) {
       if (Build.VERSION.SDK_INT < 23) {
         String [] requiredPermissions = getRequiredPermissions();
         logD("onStart() calling ActivityCompat.requestPermisions()");
-        logD("numPermissions: " + requiredPermissions.length);
-        for(String p : requiredPermissions) {
-          logD(p.substring(19));
-        }
+        //logD("numPermissions: " + requiredPermissions.length);
+        //for(String p : requiredPermissions) {
+        //  logD(p.substring(19));
+        //}
         ActivityCompat.requestPermissions(this, getRequiredPermissions(), REQUEST_CODE_REQUIRED_PERMISSIONS);
       } else {
         String [] requiredPermissions = getRequiredPermissions();
         logD("onStart() calling requestPermisions()");
-        logD("numPermissions: " + requiredPermissions.length);
-        for(String p : requiredPermissions) {
-          logD(p.substring(19));
-        }
+        //logD("numPermissions: " + requiredPermissions.length);
+        //for(String p : requiredPermissions) {
+        //  logD(p.substring(19));
+        //}
         requestPermissions(requiredPermissions, REQUEST_CODE_REQUIRED_PERMISSIONS);
       }
     }
@@ -252,11 +257,15 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         grantResult = grantResults[ i ];
 	  }
       if (grantResult == PackageManager.PERMISSION_GRANTED) {
-        logD("" + i + ") " + permission + ": " + grantResult);
+        if (requestCode == 2) {
+          logD("" + i + ") " + permission + ": " + grantResult);
+        }
       }
       else {
         allGood = false;
-        logW("" + i + ") " + permission + ": " + grantResult);
+        if (requestCode == 2) {
+          logW("" + i + ") " + permission + ": " + grantResult);
+        }
       }
     }
 
@@ -265,7 +274,7 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         recreate();
       }
       else {
-        Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
+        //Toast.makeText(this, R.string.error_missing_permissions, Toast.LENGTH_LONG).show();
         //finish();
         return;
       }
@@ -555,6 +564,14 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
   protected void onReceive(Endpoint endpoint, Payload payload) {}
 
   /**
+   * Data transfer complete, called after successful payload stream.
+   *
+   * @param endpoint The sender.
+   * @param payload The data.
+   */
+  protected void onTransferComplete(Endpoint endpoint) {}
+
+  /**
    * An optional hook to pool any permissions the app needs with the permissions ConnectionsActivity
    * will request.
    *
@@ -606,10 +623,10 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     for (String permission : permissions) {
       int permissionVal = ContextCompat.checkSelfPermission(context, permission);
       if (permissionVal == PackageManager.PERMISSION_GRANTED) {
-        logD("granted: " + permission.substring(19));
+        //logD("granted: " + permission.substring(19));
       } else {
         allGood = false;
-        logW("denied: " + permission.substring(19));
+        //logW("denied: " + permission.substring(19));
       }
     }
     logD("hasPermissions() returning: " + allGood);
